@@ -1,0 +1,56 @@
+# End-to-end demo, entirely on GitHub's servers:
+#   real Odoo 19 in Docker -> one simulated year of orders -> extract through
+#   the JSON-2 API -> analyse -> publish the report on GitHub Pages.
+name: Demo report
+
+on:
+  push:
+    branches: [main]
+    paths: ["xray/**", "demo/**", ".github/workflows/demo.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - run: pip install -e .
+
+      - name: Start Odoo 19 and simulate one year of orders
+        run: bash demo/build_demo.sh
+
+      - name: Extract the event log and build the report
+        run: |
+          source demo/.env.local
+          export ODOO_API_KEY="$XRAY_API_KEY"
+          mkdir -p site
+          python -m xray extract --url http://localhost:8069 --db xray --out site/eventlog.csv
+          python -m xray report site/eventlog.csv --out site/index.html --as-of 2026-08-31T21:00:00 \
+            --note "The company and its data are fictional, generated to demonstrate the tool."
+
+      - uses: actions/configure-pages@v6
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5
