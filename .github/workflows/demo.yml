@@ -37,12 +37,12 @@ jobs:
           export ODOO_API_KEY="$XRAY_API_KEY"
           mkdir -p site
           # presence only, never the value (and Actions masks secrets anyway)
-          echo "AI keys available: gemini=${GEMINI_API_KEY:+yes} groq=${GROQ_API_KEY:+yes}"
+          echo "AI keys available: gemini=${GEMINI_API_KEY:+yes} groq=${GROQ_API_KEY:+yes}" | tee site/build-log.txt
           python -m xray extract --url http://localhost:8069 --db xray --out site/eventlog.csv
           python -m xray report site/eventlog.csv --out site/index.html --as-of 2026-08-31T21:00:00 \
             --ai auto \
             --note "The company and its data are fictional, generated to demonstrate the tool." \
-            | tee site/build-log.txt
+            | tee -a site/build-log.txt
         env:
           # Optional: add either key under Settings > Secrets and variables > Actions
           # to get the AI-written summary. Without them the report is published as is.
