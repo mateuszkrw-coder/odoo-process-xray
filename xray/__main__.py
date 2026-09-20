@@ -16,6 +16,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+from .ai import write_summary
 from .analyze import analyze, load_event_log
 from .eventlog import write_csv
 from .extract import Extractor
@@ -66,7 +67,13 @@ def cmd_report(args):
     note = args.note
     if note is None and meta.get("extracted_at"):
         note = f"Data read from Odoo on {datetime.fromisoformat(meta['extracted_at']):%d %b %Y}."
-    Path(args.out).write_text(render(results, note or ""), encoding="utf-8")
+    ai_summary = None
+    if args.ai != "off":
+        text, reason = write_summary(results, provider=args.ai, anonymised=not args.ai_send_names)
+        ai_summary = (text, reason)
+        if not text:
+            print(f"No AI summary ({reason}); the report is complete without it.")
+    Path(args.out).write_text(render(results, note or "", ai_summary), encoding="utf-8")
     print(f"Wrote {args.out}: {results.counts['quotations']} orders, "
           f"{sum(1 for r in results.rules if r.hits)} kinds of problem found")
 
@@ -95,6 +102,11 @@ def main(argv=None):
         p.add_argument("--tz", default="Europe/Brussels", help="time zone for weekdays (default Europe/Brussels)")
         p.add_argument("--as-of", help="date used as 'today' for overdue invoices (default: extraction date)")
         p.add_argument("--note", help="extra sentence under the report title")
+        p.add_argument("--ai", default="off", choices=["off", "auto", "github", "gemini", "groq"],
+                       help="let a language model write the summary paragraph from the computed numbers "
+                            "(needs GITHUB_TOKEN, GEMINI_API_KEY or GROQ_API_KEY); off by default")
+        p.add_argument("--ai-send-names", action="store_true",
+                       help="send real names to the model (default: anonymise people and customers)")
 
     p = sub.add_parser("extract", help="read Odoo and write the event log CSV")
     odoo_args(p)

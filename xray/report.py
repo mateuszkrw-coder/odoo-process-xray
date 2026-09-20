@@ -401,7 +401,7 @@ def finding_card(f, results, number):
             f'<div class="finding-body"><h3>{escape(f["title"])}</h3>{"".join(body)}</div></article>')
 
 
-def render(results, source_note=""):
+def render(results, source_note="", ai_summary=None):
     counts = results.counts
     confirmed = [c for c in results.cases if c.has(ORDER_CONFIRMED)]
     problem_orders = {c.case_id for r in results.rules for c in r.hits}
@@ -424,6 +424,10 @@ def render(results, source_note=""):
                          for l, v, s in tiles)
 
     summary = "".join(f'<li><a href="#{f["id"]}">{escape(f["title"])}</a>: {f["summary"]}</li>' for f in key_items)
+    written = ""
+    if ai_summary and ai_summary[0]:
+        written = (f'<div class="card written"><h3>Summary</h3><p>{escape(ai_summary[0])}</p>'
+                   f'<p class="written-note">{escape(ai_summary[1])}</p></div>')
     cards = "".join(finding_card(f, results, i + 1) for i, f in enumerate(key_items))
     others = table(["Check", "Orders affected", "Share"],
                    [(f["title"], len(f["rule"].hits), pct(f["rule"].rate)) for f in other_items], numeric=(1, 2))
@@ -445,6 +449,7 @@ def render(results, source_note=""):
         source_note=escape(source_note),
         tiles=tiles_html,
         summary=summary,
+        written=written,
         cards=cards,
         others=others if other_items else "",
         clean=(f"<p class='muted'>No problems found for: {escape('; '.join(clean_rules))}.</p>" if clean_rules else ""),
@@ -516,6 +521,10 @@ h4 {{ font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: 
 .tile-value {{ font-size: 30px; font-weight: 600; margin: 4px 0 2px; }}
 .tile-sub {{ font-size: 13px; color: var(--muted); }}
 .summary {{ margin: 0; padding-left: 20px; }}
+.written {{ margin-top: 28px; }}
+.written h3 {{ margin-bottom: 8px; }}
+.written p {{ margin: 0 0 10px; font-size: 16px; }}
+.written-note {{ font-size: 13px !important; color: var(--muted); border-top: 1px solid var(--grid); padding-top: 8px; }}
 .summary li {{ margin: 6px 0; }}
 .finding {{ display: flex; gap: 16px; background: var(--surface); border: 1px solid var(--border);
   border-radius: 12px; padding: 22px 22px 16px; margin: 14px 0; }}
@@ -604,6 +613,8 @@ footer {{ margin-top: 48px; font-size: 13px; color: var(--muted); }}
 change history. {source_note}</p>
 
 <div class="tiles">{tiles}</div>
+
+{written}
 
 <h2>Key findings</h2>
 <p class="section-intro">Problems that are both frequent and concentrated somewhere specific, so there is

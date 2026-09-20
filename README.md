@@ -73,7 +73,29 @@ flowchart LR
    speed by weekday, most common paths. Works in light and dark mode, and values are always written
    out, never shown by colour alone.
 
-No AI in the loop: counting and date arithmetic, so the same data always gives the same numbers.
+Every number comes from counting and date arithmetic, so the same data always gives the same numbers.
+
+## Optional: an AI-written summary
+
+With `--ai`, a language model writes the opening paragraph — and only the paragraph:
+
+- **Python computes every number.** The model receives the finished analysis as JSON and turns it into
+  sentences. It is explicitly forbidden to calculate anything.
+- **Its arithmetic is checked.** Every number in the generated text must exist in the analysis. If the
+  model invents one, the text is thrown away and the report is published without it. That check has
+  its own test.
+- **Names stay home.** People and customers are replaced by placeholders (*Salesperson A*,
+  *Customer 7*) before the request leaves the machine, and restored in the final text. Use
+  `--ai-send-names` if you would rather send the real ones.
+- **It is free and optional.** Without a key nothing changes. Supported: GitHub Models (free with any
+  GitHub account, and inside GitHub Actions the built-in token is enough), Google Gemini and Groq
+  free tiers.
+
+```bash
+python -m xray report examples/beanline_eventlog.csv --out report.html --ai auto
+```
+
+The published demo report uses GitHub Models, so the summary you see there was written this way.
 
 ## Try it
 
@@ -133,6 +155,7 @@ xray/
   eventlog.py    event log format, and the Case helper rules are written with
   rules.py       the business rules (start here)
   analyze.py     timings, process map, paths, patterns
+  ai.py          optional AI summary, with the number check
   report.py      the HTML report
 demo/            Odoo 19 in Docker and the one-year simulation
 examples/        the demo's event log, ready to analyse
@@ -153,7 +176,7 @@ tests/           pytest suite, runs on every push
 
 - Purchase-to-pay: request for quotation → approval → receipt → vendor bill → payment
 - OCEL 2.0 export (object-centric process mining: one order, several deliveries and invoices)
-- An optional AI-written summary on top of the computed numbers
+- Ask questions about the process in plain language, answered from the computed numbers
 
 ---
 
