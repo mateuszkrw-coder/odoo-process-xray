@@ -146,17 +146,26 @@ def unsupported_numbers(text, data):
 # --------------------------------------------------------------------------
 
 def _chat(url, key, model, prompt, extra_headers=None):
-    response = requests.post(
-        url,
-        headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json",
-                 "User-Agent": f"odoo-process-xray/{__version__}", **(extra_headers or {})},
-        json={"model": model, "temperature": 0.2, "max_tokens": 400,
-              "messages": [{"role": "user", "content": prompt}]},
-        timeout=TIMEOUT,
-    )
+    """OpenAI-compatible chat completion.
+
+    Older models want `max_tokens`, newer ones only accept
+    `max_completion_tokens`, so a rejection is retried the other way.
+    """
+    headers = {"Authorization": f"Bearer {key}", "Content-Type": "application/json",
+               "User-Agent": f"odoo-process-xray/{__version__}", **(extra_headers or {})}
+    body = {"model": model, "temperature": 0.2, "max_tokens": 400,
+            "messages": [{"role": "user", "content": prompt}]}
+    response = requests.post(url, headers=headers, json=body, timeout=TIMEOUT)
+    if response.status_code == 400 and "max_tokens" in response.text:
+        body["max_completion_tokens"] = body.pop("max_tokens")
+        body.pop("temperature", None)
+        response = requests.post(url, headers=headers, json=body, timeout=TIMEOUT)
     if response.status_code != 200:
-        raise AIUnavailable(f"{url} answered {response.status_code}: {response.text[:200]}")
-    return response.json()["choices"][0]["message"]["content"].strip()
+        raise AIUnavailable(f"{url} answered {response.status_code}: {response.text[:300]}")
+    try:
+        return response.json()["choices"][0]["message"]["content"].strip()
+    except (KeyError, IndexError, ValueError):
+        raise AIUnavailable(f"unexpected answer from {url}: {response.text[:300]}")
 
 
 def _gemini(key, model, prompt):

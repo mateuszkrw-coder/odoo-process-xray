@@ -40,7 +40,8 @@ jobs:
           python -m xray extract --url http://localhost:8069 --db xray --out site/eventlog.csv
           python -m xray report site/eventlog.csv --out site/index.html --as-of 2026-08-31T21:00:00 \
             --ai github \
-            --note "The company and its data are fictional, generated to demonstrate the tool."
+            --note "The company and its data are fictional, generated to demonstrate the tool." \
+            | tee site/build-log.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
