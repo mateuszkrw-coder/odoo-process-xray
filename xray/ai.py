@@ -31,15 +31,17 @@ TIMEOUT = 60
 PROMPT = """You are a business analyst writing the opening of a report about a company's
 order-to-cash process in Odoo. Below is the computed analysis, in JSON.
 
-Write 3 to 5 short sentences for the management team:
-- start with the state of the process as a whole (volume, conversion, order-to-cash time),
-- then the two or three findings that matter most, and where they are concentrated,
-- end with the single action you would take first.
+Write, for the management team:
+- one opening sentence on the state of the process as a whole (volume, conversion,
+  order-to-cash time),
+- then 3 or 4 bullet points, each starting with "- ", one finding per bullet: what it is,
+  how big it is, and where it is concentrated,
+- then a last line starting with "First action: " naming the single thing to do first.
 
 Rules:
 - Use ONLY numbers that appear in the JSON. Never calculate or estimate a new number.
 - Keep names exactly as written (they are placeholders like "Salesperson A").
-- Plain business English, no bullet points, no headings, no markdown.
+- Keep every line short, under 25 words. Plain business English, no headings, no bold.
 
 JSON:
 """
@@ -278,7 +280,8 @@ def write_summary(results, provider="auto", anonymised=True, call=None, log=prin
     except Exception as e:  # network, quota, unexpected answer shape
         return None, f"{type(e).__name__}: {e}"
 
-    text = " ".join(text.split())
+    lines = [" ".join(line.split()) for line in text.splitlines()]
+    text = "\n".join(line for line in lines if line)
     if len(text) < 120 or text[-1] not in ".!?":
         return None, f"the model's answer looks cut off: {text[:80]!r}"
 

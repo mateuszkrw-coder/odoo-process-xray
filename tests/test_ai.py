@@ -73,6 +73,20 @@ def test_summary_appears_in_the_report(synthetic_log):
     assert "Everything is fine." in html and "Written by a test model." in html
 
 
+def test_bullets_are_rendered_as_a_list(synthetic_log):
+    results = results_of(synthetic_log)
+    summary = "\n".join([
+        "The company confirmed 200 of 200 quotations, with cash in 24.2 days.",
+        "- Salesperson D changed 47 orders after confirmation.",
+        "- 200 orders were shipped on time.",
+        "First action: lock confirmed orders.",
+    ])
+    html = render(results, ai_summary=(summary, "Written by a test model."))
+    assert "<ul class=\"written-points\">" in html
+    assert html.count("<li>Salesperson D changed 47 orders after confirmation.</li>") == 1
+    assert "<p>First action: lock confirmed orders.</p>" in html
+
+
 def test_unsupported_numbers_tolerates_rounding():
     data = {"share": 17.4, "orders": 1200}
     assert unsupported_numbers("17% of 1,200 orders", data) == []

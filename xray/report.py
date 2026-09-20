@@ -376,6 +376,22 @@ def table(headers, rows, numeric=()):
     return f'<div class="table-wrap"><table class="data"><thead><tr>{head}</tr></thead><tbody>{body}</tbody></table></div>'
 
 
+def format_summary(text):
+    """The model writes a lead sentence, bullets and a closing line: keep that shape."""
+    parts, bullets = [], []
+    for line in text.splitlines():
+        if line.startswith(("- ", "* ", "• ")):
+            bullets.append(f"<li>{escape(line[2:].strip())}</li>")
+            continue
+        if bullets:
+            parts.append(f'<ul class="written-points">{"".join(bullets)}</ul>')
+            bullets = []
+        parts.append(f"<p>{escape(line)}</p>")
+    if bullets:
+        parts.append(f'<ul class="written-points">{"".join(bullets)}</ul>')
+    return "".join(parts)
+
+
 def finding_card(f, results, number):
     body = [f'<p class="headline">{f["headline"]}</p>']
     if f["where"]:
@@ -426,7 +442,7 @@ def render(results, source_note="", ai_summary=None):
     summary = "".join(f'<li><a href="#{f["id"]}">{escape(f["title"])}</a>: {f["summary"]}</li>' for f in key_items)
     written = ""
     if ai_summary and ai_summary[0]:
-        written = (f'<div class="card written"><h3>Summary</h3><p>{escape(ai_summary[0])}</p>'
+        written = (f'<div class="card written"><h3>Summary</h3>{format_summary(ai_summary[0])}'
                    f'<p class="written-note">{escape(ai_summary[1])}</p></div>')
     cards = "".join(finding_card(f, results, i + 1) for i, f in enumerate(key_items))
     others = table(["Check", "Orders affected", "Share"],
@@ -524,6 +540,8 @@ h4 {{ font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: 
 .written {{ margin-top: 28px; }}
 .written h3 {{ margin-bottom: 8px; }}
 .written p {{ margin: 0 0 10px; font-size: 16px; }}
+.written-points {{ margin: 0 0 12px; padding-left: 22px; }}
+.written-points li {{ margin: 6px 0; font-size: 15px; }}
 .written-note {{ font-size: 13px !important; color: var(--muted); border-top: 1px solid var(--grid); padding-top: 8px; }}
 .summary li {{ margin: 6px 0; }}
 .finding {{ display: flex; gap: 16px; background: var(--surface); border: 1px solid var(--border);
