@@ -172,16 +172,31 @@ def _chat(url, key, model, prompt, extra_headers=None):
 
 
 def _gemini(key, model, prompt):
-    response = requests.post(
-        f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
-        headers={"x-goog-api-key": key, "Content-Type": "application/json"},
-        json={"contents": [{"parts": [{"text": prompt}]}],
-              "generationConfig": {"temperature": 0.2, "maxOutputTokens": 400}},
-        timeout=TIMEOUT,
-    )
+    """Google AI Studio.
+
+    Recent Gemini models spend part of the output budget on internal
+    reasoning, which silently truncates the answer, so thinking is switched
+    off and a cut-off answer is treated as a failure.
+    """
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+    config = {"temperature": 0.2, "maxOutputTokens": 1200, "thinkingConfig": {"thinkingBudget": 0}}
+    body = {"contents": [{"parts": [{"text": prompt}]}], "generationConfig": config}
+    response = requests.post(url, headers={"x-goog-api-key": key, "Content-Type": "application/json"},
+                             json=body, timeout=TIMEOUT)
+    if response.status_code == 400 and "thinking" in response.text.lower():
+        config.pop("thinkingConfig")
+        response = requests.post(url, headers={"x-goog-api-key": key, "Content-Type": "application/json"},
+                                 json=body, timeout=TIMEOUT)
     if response.status_code != 200:
-        raise AIUnavailable(f"Gemini answered {response.status_code}: {response.text[:200]}")
-    return response.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
+        raise AIUnavailable(f"Gemini answered {response.status_code}: {response.text[:300]}")
+    try:
+        candidate = response.json()["candidates"][0]
+        parts = [p["text"] for p in candidate["content"]["parts"] if p.get("text") and not p.get("thought")]
+    except (KeyError, IndexError, ValueError):
+        raise AIUnavailable(f"unexpected answer from Gemini: {response.text[:300]}")
+    if candidate.get("finishReason") not in (None, "STOP"):
+        raise AIUnavailable(f"Gemini stopped early ({candidate.get('finishReason')})")
+    return "".join(parts).strip()
 
 
 def _openai_compatible(url):
@@ -263,6 +278,10 @@ def write_summary(results, provider="auto", anonymised=True, call=None, log=prin
     except Exception as e:  # network, quota, unexpected answer shape
         return None, f"{type(e).__name__}: {e}"
 
+    text = " ".join(text.split())
+    if len(text) < 120 or text[-1] not in ".!?":
+        return None, f"the model's answer looks cut off: {text[:80]!r}"
+
     invented = unsupported_numbers(text, data)
     if invented:
         return None, f"the model used numbers that are not in the analysis: {', '.join(invented[:5])}"
@@ -272,4 +291,4 @@ def write_summary(results, provider="auto", anonymised=True, call=None, log=prin
     note = (f"Written by {label} from the numbers in this report"
             + (", on anonymised data" if anonymised else "")
             + ". Every number was checked against the analysis.")
-    return " ".join(text.split()), note
+    return text, note

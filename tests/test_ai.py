@@ -33,7 +33,9 @@ def test_good_summary_is_kept_and_names_restored(synthetic_log):
 
     def model(prompt):
         assert "Tom" not in prompt  # the model only ever sees placeholders
-        return "The company confirmed 200 quotations. Salesperson D changed 47 orders after confirmation."
+        return ("The company confirmed 200 of its 200 quotations in the period, and cash arrives a median "
+                "of 24.2 days after confirmation. Salesperson D changed 47 orders after the customer had "
+                "already confirmed them, which is where I would start.")
 
     text, note = write_summary(results, call=model)
     assert text.startswith("The company confirmed 200 quotations")
@@ -46,6 +48,12 @@ def test_invented_numbers_are_rejected(synthetic_log):
     text, reason = write_summary(results, call=lambda prompt: "Orders take 7654 days and cost 4321 euro.")
     assert text is None
     assert "7654" in reason
+
+
+def test_cut_off_answers_are_rejected(synthetic_log):
+    results = results_of(synthetic_log)
+    text, reason = write_summary(results, call=lambda prompt: "Across the period, the company generated")
+    assert text is None and "cut off" in reason
 
 
 def test_broken_provider_does_not_break_the_report(synthetic_log):
