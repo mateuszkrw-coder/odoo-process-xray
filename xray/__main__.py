@@ -102,9 +102,10 @@ def main(argv=None):
         p.add_argument("--tz", default="Europe/Brussels", help="time zone for weekdays (default Europe/Brussels)")
         p.add_argument("--as-of", help="date used as 'today' for overdue invoices (default: extraction date)")
         p.add_argument("--note", help="extra sentence under the report title")
-        p.add_argument("--ai", default="off", choices=["off", "auto", "github", "gemini", "groq"],
+        p.add_argument("--ai", default="off", choices=["off", "auto", "gemini", "groq", "custom"],
                        help="let a language model write the summary paragraph from the computed numbers "
-                            "(needs GITHUB_TOKEN, GEMINI_API_KEY or GROQ_API_KEY); off by default")
+                            "(needs GEMINI_API_KEY, GROQ_API_KEY, or XRAY_AI_URL + XRAY_AI_KEY); "
+                            "off by default")
         p.add_argument("--ai-send-names", action="store_true",
                        help="send real names to the model (default: anonymise people and customers)")
 

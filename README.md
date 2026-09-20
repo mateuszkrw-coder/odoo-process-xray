@@ -87,15 +87,21 @@ With `--ai`, a language model writes the opening paragraph — and only the para
 - **Names stay home.** People and customers are replaced by placeholders (*Salesperson A*,
   *Customer 7*) before the request leaves the machine, and restored in the final text. Use
   `--ai-send-names` if you would rather send the real ones.
-- **It is free and optional.** Without a key nothing changes. Supported: GitHub Models (free with any
-  GitHub account, and inside GitHub Actions the built-in token is enough), Google Gemini and Groq
-  free tiers.
+- **It is free and optional.** Without a key nothing changes. Works with the Google Gemini and Groq
+  free tiers, or any OpenAI-compatible endpoint (`XRAY_AI_URL` + `XRAY_AI_KEY`).
+- **Providers change, so nothing depends on one.** Each provider carries a list of candidate models
+  and moves on when one is retired. This project learned that the hard way: the first version called
+  GitHub Models, which had been retired a few weeks earlier.
+- **One caveat worth knowing:** Google's free tier may use prompts to improve their models. That is
+  why anonymisation is the default, and why real client data belongs on an endpoint that does not
+  train on your input.
 
 ```bash
 python -m xray report examples/beanline_eventlog.csv --out report.html --ai auto
 ```
 
-The published demo report uses GitHub Models, so the summary you see there was written this way.
+The published demo report shows the summary when an API key is set in the repository's secrets, and
+is published without it otherwise.
 
 ## Try it
 

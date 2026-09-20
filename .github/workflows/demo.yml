@@ -13,7 +13,6 @@ permissions:
   contents: read
   pages: write
   id-token: write
-  models: read      # free GitHub Models inference, for the AI summary
 
 concurrency:
   group: pages
@@ -39,11 +38,14 @@ jobs:
           mkdir -p site
           python -m xray extract --url http://localhost:8069 --db xray --out site/eventlog.csv
           python -m xray report site/eventlog.csv --out site/index.html --as-of 2026-08-31T21:00:00 \
-            --ai github \
+            --ai auto \
             --note "The company and its data are fictional, generated to demonstrate the tool." \
             | tee site/build-log.txt
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Optional: add either key under Settings > Secrets and variables > Actions
+          # to get the AI-written summary. Without them the report is published as is.
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
 
       # Downloadable from the run page, even when Pages is not enabled.
       - uses: actions/upload-artifact@v7

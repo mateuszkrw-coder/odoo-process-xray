@@ -8,12 +8,15 @@ away and the plain summary is used instead.
 Names of people and customers are replaced by placeholders before the request
 leaves the machine, and put back afterwards, so client data stays home.
 
-Providers (first one with credentials wins):
-  github   GitHub Models, free with a GitHub account; inside GitHub Actions
-           the built-in GITHUB_TOKEN works when the workflow grants
-           `permissions: models: read`.
+Providers (the first one with credentials wins):
   gemini   Google AI Studio, free tier (GEMINI_API_KEY)
   groq     Groq, free tier (GROQ_API_KEY)
+  custom   any OpenAI-compatible endpoint (XRAY_AI_URL, XRAY_AI_KEY, XRAY_AI_MODEL),
+           for OpenRouter, Mistral, Azure, a local model...
+
+Model names and free tiers change often (GitHub Models, for example, was
+retired in July 2026), so each provider carries a list of candidate models and
+moves on to the next when one is unknown.
 """
 import json
 import os
@@ -181,31 +184,36 @@ def _gemini(key, model, prompt):
     return response.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
 
 
+def _openai_compatible(url):
+    def call(key, model, prompt):
+        return _chat(url, key, model, prompt)
+    return call
+
+
 PROVIDERS = {
-    "github": {
-        "env": ("GITHUB_MODELS_TOKEN", "GITHUB_TOKEN"),
-        "model": os.environ.get("XRAY_AI_MODEL", "openai/gpt-4o-mini"),
-        "label": "GitHub Models",
-        "call": lambda key, model, prompt: _chat("https://models.github.ai/inference/chat/completions",
-                                                 key, model, prompt),
-    },
     "gemini": {
         "env": ("GEMINI_API_KEY",),
-        "model": os.environ.get("XRAY_AI_MODEL", "gemini-2.0-flash"),
+        "models": ["gemini-flash-latest", "gemini-2.5-flash", "gemini-2.0-flash"],
         "label": "Google Gemini",
         "call": _gemini,
     },
     "groq": {
         "env": ("GROQ_API_KEY",),
-        "model": os.environ.get("XRAY_AI_MODEL", "llama-3.3-70b-versatile"),
-        "call": lambda key, model, prompt: _chat("https://api.groq.com/openai/v1/chat/completions",
-                                                 key, model, prompt),
+        "models": ["llama-3.3-70b-versatile", "openai/gpt-oss-120b", "llama-3.1-8b-instant"],
         "label": "Groq",
+        "call": _openai_compatible("https://api.groq.com/openai/v1/chat/completions"),
+    },
+    "custom": {
+        "env": ("XRAY_AI_KEY",),
+        "models": [os.environ.get("XRAY_AI_MODEL", "gpt-4o-mini")],
+        "label": "custom endpoint",
+        "call": lambda key, model, prompt: _chat(os.environ.get("XRAY_AI_URL", ""), key, model, prompt),
     },
 }
 
 
 def pick_provider(name="auto"):
+    """First provider with a key. Returns (config, key)."""
     names = list(PROVIDERS) if name == "auto" else [name]
     for candidate in names:
         provider = PROVIDERS.get(candidate)
@@ -213,8 +221,26 @@ def pick_provider(name="auto"):
             raise AIUnavailable(f"Unknown AI provider '{candidate}'. Choose from: {', '.join(PROVIDERS)}.")
         for variable in provider["env"]:
             if os.environ.get(variable):
-                return candidate, provider, os.environ[variable]
-    raise AIUnavailable("No API key found. Set GITHUB_TOKEN (GitHub Models), GEMINI_API_KEY or GROQ_API_KEY.")
+                return provider, os.environ[variable]
+    raise AIUnavailable("No API key found. Set GEMINI_API_KEY, GROQ_API_KEY or XRAY_AI_KEY "
+                        "(with XRAY_AI_URL) to switch the summary on.")
+
+
+def ask(provider, key, prompt, log=print):
+    """Try the provider's models in order; an unknown model is not a failure."""
+    models = [m for m in ([os.environ["XRAY_AI_MODEL"]] if os.environ.get("XRAY_AI_MODEL") else [])
+              + provider["models"] if m]
+    last = None
+    for model in models:
+        try:
+            log(f"Asking {provider['label']} ({model}) for the summary...")
+            return provider["call"](key, model, prompt), f"{provider['label']}, {model}"
+        except AIUnavailable as e:
+            last = e
+            if not any(word in str(e).lower() for word in ("not found", "404", "does not exist",
+                                                           "unknown model", "decommission", "unsupported")):
+                raise
+    raise last or AIUnavailable("no model available")
 
 
 # --------------------------------------------------------------------------
@@ -228,10 +254,8 @@ def write_summary(results, provider="auto", anonymised=True, call=None, log=prin
     prompt = PROMPT + json.dumps(data, indent=1, ensure_ascii=False)
     try:
         if call is None:
-            name, config, key = pick_provider(provider)
-            log(f"Asking {config['label']} ({config['model']}) for the summary...")
-            text = config["call"](key, config["model"], prompt)
-            label = f"{config['label']}, {config['model']}"
+            config, key = pick_provider(provider)
+            text, label = ask(config, key, prompt, log)
         else:  # tests and custom integrations
             text, label = call(prompt), "custom model"
     except AIUnavailable as e:
