@@ -36,6 +36,8 @@ jobs:
           source demo/.env.local
           export ODOO_API_KEY="$XRAY_API_KEY"
           mkdir -p site
+          # presence only, never the value (and Actions masks secrets anyway)
+          echo "AI keys available: gemini=${GEMINI_API_KEY:+yes} groq=${GROQ_API_KEY:+yes}"
           python -m xray extract --url http://localhost:8069 --db xray --out site/eventlog.csv
           python -m xray report site/eventlog.csv --out site/index.html --as-of 2026-08-31T21:00:00 \
             --ai auto \
