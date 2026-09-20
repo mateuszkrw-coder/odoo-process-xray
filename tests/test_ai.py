@@ -38,7 +38,7 @@ def test_good_summary_is_kept_and_names_restored(synthetic_log):
                 "already confirmed them, which is where I would start.")
 
     text, note = write_summary(results, call=model)
-    assert text.startswith("The company confirmed 200 quotations")
+    assert text.startswith("The company confirmed 200 of its 200 quotations")
     assert "Salesperson D" not in text and "Tom" in text
     assert "checked against the analysis" in note
 
