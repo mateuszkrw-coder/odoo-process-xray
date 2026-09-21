@@ -32,7 +32,7 @@ def cmd_extract(args):
     key = os.environ.get("ODOO_API_KEY")
     if not key:
         sys.exit("Set the ODOO_API_KEY environment variable (Odoo > Preferences > Account Security > New API Key).")
-    client = OdooClient(args.url, key, args.db)
+    client = OdooClient(args.url, key, args.db, login=args.login or os.environ.get("ODOO_LOGIN"))
     extractor = Extractor(client)
     rows, stats = extractor.run(since=args.since, until=args.until)
     if not rows:
@@ -94,6 +94,8 @@ def main(argv=None):
     def odoo_args(p):
         p.add_argument("--url", required=True, help="Odoo address, e.g. https://mycompany.odoo.com")
         p.add_argument("--db", help="database name (needed when the server hosts several)")
+        p.add_argument("--login", help="user name the API key belongs to; only needed on Odoo 18 and "
+                                       "older, which use the XML-RPC API (or set ODOO_LOGIN)")
         p.add_argument("--since", help="only orders created on or after this date (YYYY-MM-DD)")
         p.add_argument("--until", help="only orders created before this date (YYYY-MM-DD)")
 

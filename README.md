@@ -50,7 +50,7 @@ Sales*, *Invoicing Policy: Delivered quantities* or *Replenishment* rules.
 
 ```mermaid
 flowchart LR
-    O[(Odoo 19+)] -- JSON-2 API --> X[extract.py<br/>chatter history to events]
+    O[(Odoo 17/18/19)] -- JSON-2 or XML-RPC --> X[extract.py<br/>chatter history to events]
     X --> L[(eventlog.csv<br/>one row per event)]
     L --> A[analyze.py<br/>timings, paths, patterns]
     R[rules.py<br/>business rules] --> A
@@ -58,10 +58,11 @@ flowchart LR
 ```
 
 1. **Extract.** Reads sales orders, deliveries, invoices and credit notes, plus their tracked status
-   changes (`mail.message` / `mail.tracking.value`), through Odoo's JSON-2 API. The old XML-RPC API
-   is deprecated since Odoo 19. The chatter stores status *labels* in the language of whoever made
-   the change, so the extractor maps them back to technical values in every installed language
-   (the test suite checks this with Polish labels). Read-only: it never writes to Odoo.
+   changes (`mail.message` / `mail.tracking.value`). On Odoo 19 it uses the new JSON-2 API; on 17 and
+   18, which don't have it, it falls back to XML-RPC on its own — the same event log comes out either
+   way. The chatter stores status *labels* in the language of whoever made the change, so the
+   extractor maps them back to technical values in every installed language (the test suite checks
+   this with Polish labels). Read-only: it never writes to Odoo.
 2. **Event log.** One row per event: order, activity, timestamp, who, plus order attributes. This is
    the standard process mining format, so the CSV also opens in Disco, Celonis, ProM or PM4Py.
 3. **Rules.** Each problem is a short, readable Python function in [`xray/rules.py`](xray/rules.py).
@@ -112,7 +113,7 @@ pip install -e .
 python -m xray report examples/beanline_eventlog.csv --out report.html --as-of 2026-08-31T21:00:00
 ```
 
-**On your own Odoo** (version 19 or later):
+**On your own Odoo** (17, 18 or 19):
 
 1. In Odoo, create an API key: *Preferences → Account Security → New API Key*. Use a user with the
    *Settings* access right: reading the change history directly requires administrator rights.
@@ -120,10 +121,18 @@ python -m xray report examples/beanline_eventlog.csv --out report.html --as-of 2
 
 ```bash
 export ODOO_API_KEY=your-key
+
+# Odoo 19
 python -m xray run --url https://yourcompany.odoo.com --db yourcompany --out-dir output
+
+# Odoo 17 or 18: add the login the key belongs to (the older API needs it)
+python -m xray run --url https://yourcompany.odoo.com --db yourcompany --login you@company.com   --out-dir output
 ```
 
 On Odoo Online the external API requires the *Custom* pricing plan.
+
+Nothing is installed in Odoo, and the tool only reads. In practice you rarely need the key at all:
+the client can run the command themselves and send you the two files it writes.
 
 **Rebuild the whole demo** (needs Docker, about 4 minutes):
 
@@ -135,6 +144,17 @@ This starts Odoo 19 Community, replays one simulated year (about 3,500 actions: 
 confirmations, deliveries, invoices, credit notes, payments) with Odoo's clock moved back so every
 date is historical, and creates an API key. GitHub Actions runs the same pipeline on every push and
 publishes the report ([`.github/workflows/demo.yml`](.github/workflows/demo.yml)).
+
+The same script builds the older versions, each on its own port, which is how the XML-RPC path is
+verified:
+
+```bash
+ODOO_VERSION=18.0 ODOO_PORT=8169 bash demo/build_demo.sh
+ODOO_VERSION=17.0 ODOO_PORT=8269 bash demo/build_demo.sh
+```
+
+Odoo 17 and 18 produce exactly the same event log as Odoo 19; a monthly workflow re-checks it
+([`.github/workflows/compatibility.yml`](.github/workflows/compatibility.yml)).
 
 ## Write your own rule
 
@@ -156,7 +176,7 @@ The report picks up new rules automatically, including the search for where they
 
 ```
 xray/
-  odoo_api.py    JSON-2 API client
+  odoo_api.py    talks to Odoo: JSON-2 on 19, XML-RPC on 17 and 18
   extract.py     Odoo change history -> event log
   eventlog.py    event log format, and the Case helper rules are written with
   rules.py       the business rules (start here)
@@ -176,7 +196,8 @@ tests/           pytest suite, runs on every push
   documents' own dates and the report says how much of the data came from each source.
 - The data shows *what* happened, not *why*. Every finding is a question to take to the people
   involved.
-- Needs Odoo 19 or later (JSON-2 API).
+- Tested on Odoo 17, 18 and 19 (Community). Odoo 19 uses the JSON-2 API, older versions XML-RPC,
+  which also needs the login name that the API key belongs to.
 
 ## Roadmap
 

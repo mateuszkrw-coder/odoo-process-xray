@@ -1,0 +1,48 @@
+# Proof that the extractor still works on the Odoo versions companies actually
+# run. Odoo 17 and 18 have no JSON-2 API, so this exercises the XML-RPC path
+# against a real server of each version. Manual and monthly: it takes a while.
+name: Odoo 17 and 18
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 5 1 * *"   # the 1st of each month
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        odoo: ["17.0", "18.0"]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - run: pip install -e .
+
+      - name: Start Odoo ${{ matrix.odoo }} and simulate one year of orders
+        run: bash demo/build_demo.sh
+        env:
+          ODOO_VERSION: ${{ matrix.odoo }}
+
+      - name: Extract through the XML-RPC API
+        run: |
+          source demo/.env.local
+          export ODOO_API_KEY="$XRAY_API_KEY"
+          python -m xray extract --url http://localhost:8069 --db xray --login admin --out eventlog.csv
+          python -m xray report eventlog.csv --out report.html --as-of 2026-08-31T21:00:00
+
+      - name: The event log must match the one from Odoo 19
+        run: |
+          cut -d, -f1,2,8-15 eventlog.csv > got.csv
+          cut -d, -f1,2,8-15 examples/beanline_eventlog.csv > expected.csv
+          diff got.csv expected.csv && echo "identical to the Odoo 19 event log"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: report-odoo-${{ matrix.odoo }}
+          path: |
+            report.html
+            eventlog.csv

@@ -155,12 +155,15 @@ def setup():
 
     term_30 = env.ref("account.account_payment_term_30days")
 
+    # Odoo 19 and 18 use type="consu" + is_storable; Odoo 17 used type="product".
+    storable = ({"type": "consu", "is_storable": True} if "is_storable" in env["product.template"]._fields
+                else {"type": "product"})
+
     products = {}
     for name, price, _ in PRODUCTS:
         product = env["product.product"].create({
             "name": name,
-            "type": "consu",
-            "is_storable": True,
+            **storable,
             "list_price": price,
             "standard_price": round(price * 0.55, 2),
             "invoice_policy": "order",

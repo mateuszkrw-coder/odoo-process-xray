@@ -190,7 +190,9 @@ class Extractor:
             add(QUOTE_CREATED, _parse(order["create_date"]), _name(order["create_uid"]), order["name"])
             rows_before = len(rows)
             self._order_events(order, so_history.get(order["id"], []), labels, add)
-            if order["state"] == "sale" and not any(r["activity"] == ORDER_CONFIRMED for r in rows[rows_before:]):
+            # Odoo 17 also has "done" (a locked order), which is confirmed too.
+            if order["state"] in ("sale", "done") and not any(r["activity"] == ORDER_CONFIRMED
+                                                              for r in rows[rows_before:]):
                 add(ORDER_CONFIRMED, _parse(order["date_order"]), document=order["name"], source=DOCUMENT)
 
             for pid in order["picking_ids"]:

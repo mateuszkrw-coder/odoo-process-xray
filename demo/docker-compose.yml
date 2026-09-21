@@ -1,6 +1,8 @@
-# Throwaway Odoo 19 Community + PostgreSQL used to generate the demo company.
-# Not for production: default passwords, no volumes.
-name: xray-demo
+# Throwaway Odoo + PostgreSQL used to generate the demo company.
+# ODOO_VERSION picks the Odoo release (19.0 by default; 17.0 and 18.0 work too)
+# and each version gets its own project, database and port, so they can run
+# side by side. Not for production: default passwords, no volumes.
+name: xray-demo-${ODOO_VERSION:-19.0}
 
 services:
   db:
@@ -16,7 +18,7 @@ services:
       retries: 30
 
   odoo:
-    image: odoo:19.0
+    image: odoo:${ODOO_VERSION:-19.0}
     depends_on:
       db:
         condition: service_healthy
@@ -25,6 +27,6 @@ services:
       USER: odoo
       PASSWORD: odoo
     ports:
-      - "8069:8069"
+      - "${ODOO_PORT:-8069}:8069"
     volumes:
       - ./:/mnt/demo:ro
