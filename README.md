@@ -6,6 +6,9 @@
 **Process mining for Odoo.** It reads the change history Odoo already keeps for every sales order,
 delivery and invoice, rebuilds how each order really moved from quotation to payment, and shows
 where orders get stuck, where the problems concentrate, and which Odoo setting addresses them.
+Works with Odoo 17, 18 and 19. The report opens with a plain-language summary written by a language
+model — from the computed numbers only, with every figure checked against the data
+([how that works](#optional-an-ai-written-summary)).
 
 **[→ Open the live demo report](https://mateuszkrw-coder.github.io/odoo-process-xray/)**
 (a fictional company with one year of orders, generated in a real Odoo 19)
