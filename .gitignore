@@ -8,3 +8,4 @@ dist/
 output/
 site/
 demo/.env.local
+docs/showreel/build/
