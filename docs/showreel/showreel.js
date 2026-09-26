@@ -34,6 +34,10 @@ const E = {
   inOutSine: (x) => -(Math.cos(Math.PI * x) - 1) / 2,
 };
 const P = (t, a, b, e = E.lin) => e(prog(t, a, b));
+// Motion blur averages sub-frames around each frame. Numbers, typed text and
+// scrambled glyphs change in steps, so they follow the frame's own time (TF)
+// and stay crisp instead of showing two values at once.
+let TF = 0;
 // Damped spring from 0 to 1: s seconds after release, overshoots once and settles.
 function spring(s, w = 16, z = 0.5) {
   if (s <= 0) return 0;
@@ -507,7 +511,7 @@ function drawWall(ctx, t) {
     ctx.fillStyle = rgba(COL.cyan, a);
     ctx.fill();
     ctx.globalAlpha = a * P(t, T.focus[0] + 0.3, T.focus[0] + 0.5);
-    text(ctx, scramble('mail.tracking.value', P(t, T.focus[0] + 0.3, T.focus[0] + 0.7), 7), x0 + len * 0.4 + 12, y0 - len + 8,
+    text(ctx, scramble('mail.tracking.value', P(TF, T.focus[0] + 0.3, T.focus[0] + 0.7), 7), x0 + len * 0.4 + 12, y0 - len + 8,
       font(500, 22, MONO), COL.cyan);
     ctx.globalAlpha = 1;
   }
@@ -534,7 +538,7 @@ function drawReveal(ctx, t) {
   ctx.scale(k, k);
   ctx.shadowColor = rgba(COL.cyan, 0.45);
   ctx.shadowBlur = 44;
-  text(ctx, fmt(EVENTS.length * E.outCubic(prog(t, a, a + 0.6))), 0, 50 + (1 - pin) * 36, font(800, 230), COL.ink, 'center');
+  text(ctx, fmt(EVENTS.length * E.outCubic(prog(TF, a, a + 0.6))), 0, 50 + (1 - pin) * 36, font(800, 230), COL.ink, 'center');
   ctx.shadowBlur = 0;
   text(ctx, `tracked changes · ${fmt(ORDERS)} orders · one year`, 0, 128 + (1 - pin) * 24, font(500, 30, MONO), COL.muted, 'center', 1);
   ctx.restore();
@@ -567,7 +571,7 @@ function drawBeam(ctx, t) {
   }
   ctx.restore();
   // The beam's tag and its counter.
-  const converted = EVENTS.length * P(t, T.scan[0] + 0.05, T.scan[1] - 0.05, E.inOutSine);
+  const converted = EVENTS.length * P(TF, T.scan[0] + 0.05, T.scan[1] - 0.05, E.inOutSine);
   ctx.globalAlpha = clamp(life * 3);
   ctx.fillStyle = 'rgba(4,10,20,0.75)';
   ctx.beginPath();
@@ -682,7 +686,7 @@ function drawChartLabels(ctx, t) {
     ctx.stroke();
     text(ctx, label, x, y + 32, font(500, 18, MONO), COL.muted, 'center');
   }
-  text(ctx, scramble('EVENT LOG · ONE ROW PER ORDER', P(t, T.chartLabels[0], T.chartLabels[0] + 0.5), 3),
+  text(ctx, scramble('EVENT LOG · ONE ROW PER ORDER', P(TF, T.chartLabels[0], T.chartLabels[0] + 0.5), 3),
     CHART.x0, CHART.y0 - 34, font(600, 19, MONO), COL.cyan, 'left', 3);
   text(ctx, `${fmt(ORDERS)} orders · ${fmt(EVENTS.length)} events`, CHART.x1, CHART.y0 - 34, font(500, 19, MONO), COL.muted, 'right');
   ctx.globalAlpha = 1;
@@ -871,8 +875,8 @@ function drawMap(ctx, t) {
     if (s <= 0) continue;
     const pop = spring(s, 15, 0.55);
     const hot = hotNode(n);
-    const count = t > 9 ? n.count : arrived(n.arrivals, t);
-    const recent = count - arrived(n.arrivals, t - 0.12);
+    const count = t > 9 ? n.count : arrived(n.arrivals, TF);
+    const recent = count - arrived(n.arrivals, TF - 0.12);
     const absorb = clamp(recent / 25);
     ctx.save();
     ctx.globalAlpha = clamp(pop * 1.5) * lerp(1, 0.55, dim * (1 - hot)) * ex.a;
@@ -980,9 +984,9 @@ function drawCards(ctx, t) {
     ctx.globalAlpha = a;
     // Index and label.
     text(ctx, `0${k + 1}`, x, y0, font(700, 21, MONO), COL.hot, 'left', 2);
-    text(ctx, scramble(c.label, P(t, s + 0.02, s + 0.4), k * 50), x + 48, y0, font(600, 21, MONO), '#ffc2cc', 'left', 3);
+    text(ctx, scramble(c.label, P(TF, s + 0.02, s + 0.4), k * 50), x + 48, y0, font(600, 21, MONO), '#ffc2cc', 'left', 3);
     // The share, counting up.
-    const pct = Math.round(c.big * 100 * E.outExpo(prog(t, s + 0.06, s + 0.62)));
+    const pct = Math.round(c.big * 100 * E.outExpo(prog(TF, s + 0.06, s + 0.62)));
     const bigF = font(800, 140);
     const bigStr = `${pct}%`;
     const bw = measure(ctx, `${Math.round(c.big * 100)}%`, bigF);
@@ -1007,7 +1011,8 @@ function drawCards(ctx, t) {
       ctx.fillRect(x + 190, by - 6, 330, 14);
       ctx.fillStyle = j === 0 ? COL.hot : '#8a9ab8';
       ctx.fillRect(x + 190, by - 6, 330 * v * grow, 14);
-      text(ctx, `${Math.round(v * 100 * grow)}%`, x + 190 + Math.max(330 * v * grow, 0) + 12, by + 8, font(650, 20, MONO), j === 0 ? '#ffc2cc' : COL.muted);
+      const shown = Math.round(v * 100 * E.outCubic(prog(TF, s + 0.24 + j * 0.06, s + 0.7 + j * 0.06)));
+      text(ctx, `${shown}%`, x + 190 + Math.max(330 * v * grow, 0) + 12, by + 8, font(650, 20, MONO), j === 0 ? '#ffc2cc' : COL.muted);
     });
     // The Odoo setting that fixes it, switched on.
     const ca = P(t, s + 0.32, s + 0.52, E.outCubic);
@@ -1092,7 +1097,7 @@ function drawReport(ctx, t) {
   const tw = (RW.w - 72 - 48) / 4;
   tiles.forEach(([label, value, sub], i) => {
     const a = r(0.08 + i * 0.06);
-    const p = E.outExpo(prog(t, T.report + 0.5 + i * 0.06, T.report + 1.35 + i * 0.06));
+    const p = E.outExpo(prog(TF, T.report + 0.5 + i * 0.06, T.report + 1.35 + i * 0.06));
     const x = px + i * (tw + 16), y = RW.y + 166 + (1 - a) * 20;
     ctx.globalAlpha = ex.a * a;
     ctx.beginPath();
@@ -1102,7 +1107,7 @@ function drawReport(ctx, t) {
     ctx.strokeStyle = i === 3 ? rgba(COL.hot, 0.35) : 'rgba(140,170,255,0.16)';
     ctx.stroke();
     text(ctx, label, x + 18, y + 32, font(500, 16), COL.muted);
-    text(ctx, value(p), x + 18, y + 88, font(750, 46), i === 3 ? '#ff8aa0' : COL.ink);
+    text(ctx, value(p), x + 18, y + 86, font(750, 42), i === 3 ? '#ff8aa0' : COL.ink);
     text(ctx, sub, x + 18, y + 120, font(450, 14), COL.dim);
   });
   // Key findings next to the map (the map itself is drawn by drawMap and lands here).
@@ -1160,11 +1165,11 @@ function drawReport(ctx, t) {
     ctx.lineWidth = 1.5;
     ctx.stroke();
     const cmd = 'python -m xray run';
-    const shown = typed(cmd, prog(t, T.h5[0] + 0.45, T.h5[0] + 0.95));
+    const shown = typed(cmd, prog(TF, T.h5[0] + 0.45, T.h5[0] + 0.95));
     text(ctx, '$', 136, y + 45, font(600, 27, MONO), COL.cyan);
     text(ctx, shown, 168, y + 45, font(500, 27, MONO), COL.ink);
     const cw = measure(ctx, shown, font(500, 27, MONO));
-    if (Math.floor(t * 3.2) % 2 === 0 || shown.length < cmd.length) {
+    if (Math.floor(TF * 3.2) % 2 === 0 || shown.length < cmd.length) {
       ctx.fillStyle = rgba(COL.cyan, 0.9);
       ctx.fillRect(170 + cw + 3, y + 22, 14, 30);
     }
@@ -1312,11 +1317,11 @@ function drawHUD(ctx, t) {
   ctx.globalAlpha = a * 0.55;
   text(ctx, 'ODOO PROCESS X-RAY', m + 36, m + 22, font(600, 15, MONO), COL.muted, 'left', 3);
   let scene = SCENES[0];
-  for (const sc of SCENES) if (t >= sc[0]) scene = sc;
-  const sp = P(t, scene[0], scene[0] + 0.45);
+  for (const sc of SCENES) if (TF >= sc[0]) scene = sc;
+  const sp = P(TF, scene[0], scene[0] + 0.45);
   if (scene[1] !== '07') text(ctx, `${scene[1]} — ${scramble(scene[2], sp, scene[0] * 10)}`, W - m - 36, m + 22, font(600, 15, MONO), COL.muted, 'right', 3);
-  const f = Math.floor(t * 60);
-  const tc = `00:00:${String(Math.floor(t)).padStart(2, '0')}:${String(f % 60).padStart(2, '0')}`;
+  const f = Math.round(TF * 60);
+  const tc = `00:00:${String(Math.floor(f / 60)).padStart(2, '0')}:${String(f % 60).padStart(2, '0')}`;
   text(ctx, tc, m + 36, H - m - 10, font(500, 15, MONO), COL.muted, 'left', 2);
   text(ctx, 'DEMO DATA · BEANLINE TRADING (FICTIONAL)', W - m - 36, H - m - 10, font(500, 15, MONO), COL.muted, 'right', 2);
   ctx.restore();
@@ -1324,7 +1329,8 @@ function drawHUD(ctx, t) {
 
 // ------------------------------------------------------------------ frame
 
-function drawScene(ctx, t) {
+function drawScene(ctx, t, frameTime = t) {
+  TF = frameTime;
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.globalAlpha = 1;
   ctx.globalCompositeOperation = 'source-over';
