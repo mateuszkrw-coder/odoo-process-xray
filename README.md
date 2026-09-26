@@ -3,6 +3,16 @@
 [![Tests](https://github.com/mateuszkrw-coder/odoo-process-xray/actions/workflows/tests.yml/badge.svg)](https://github.com/mateuszkrw-coder/odoo-process-xray/actions/workflows/tests.yml)
 [![Demo report](https://github.com/mateuszkrw-coder/odoo-process-xray/actions/workflows/demo.yml/badge.svg)](https://github.com/mateuszkrw-coder/odoo-process-xray/actions/workflows/demo.yml)
 
+<a href="docs/showreel.mp4">
+  <picture>
+    <source media="(prefers-reduced-motion: reduce)" srcset="docs/showreel.png">
+    <img src="docs/showreel.avif" width="100%" alt="15-second showreel: Odoo's chatter history is x-rayed into an event log, the events pour into a process map, the map shows where orders get stuck, who or what is behind it and which Odoo setting fixes it, and it all ends in one HTML report.">
+  </picture>
+</a>
+
+<sub>15 seconds, drawn in code from the demo's own event log: every dot is a real event.
+[Watch it with sound](docs/showreel.mp4) · [how it's made](docs/showreel/)</sub>
+
 **Process mining for Odoo.** It reads the change history Odoo already keeps for every sales order,
 delivery and invoice, rebuilds how each order really moved from quotation to payment, and shows
 where orders get stuck, where the problems concentrate, and which Odoo setting addresses them.
@@ -188,6 +198,7 @@ xray/
   report.py      the HTML report
 demo/            Odoo 19 in Docker and the one-year simulation
 examples/        the demo's event log, ready to analyse
+docs/showreel/   the 15-second video at the top, drawn in code from the demo data
 tests/           pytest suite, runs on every push
 ```
 

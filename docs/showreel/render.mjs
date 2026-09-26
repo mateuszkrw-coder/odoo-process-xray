@@ -173,9 +173,9 @@ function encode() {
   run('ffmpeg', ['-y', '-loglevel', 'error', '-i', master,
     '-vf', `fps=${opts['avif-fps'] || 30},scale=${opts['avif-width'] || 1280}:-2:flags=lanczos:out_color_matrix=bt709:out_range=tv,format=yuv420p`,
     '-c:v', 'libsvtav1', '-preset', '4', '-crf', String(opts['avif-crf'] || 32), '-g', '450', '-svtav1-params', 'tune=0',
-    '-colorspace', 'bt709', '-color_primaries', 'bt709', '-color_trc', 'bt709', '-color_range', 'tv', avif]);
+    '-colorspace', 'bt709', '-color_primaries', 'bt709', '-color_trc', 'bt709', '-color_range', 'tv', '-loop', '0', avif]);
   // Still frame: the title card.
-  run('ffmpeg', ['-y', '-loglevel', 'error', '-ss', '14.4', '-i', master, '-frames:v', '1',
+  run('ffmpeg', ['-y', '-loglevel', 'error', '-ss', '14.62', '-i', master, '-frames:v', '1',
     '-vf', 'scale=1280:-1:flags=lanczos', poster]);
   for (const f of [mp4, avif, poster]) console.log(`${path.relative(process.cwd(), f)}  ${size(f)}`);
 }
