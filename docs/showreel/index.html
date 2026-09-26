@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Odoo Process X-Ray showreel</title>
+<link rel="stylesheet" href="fonts.css">
+<style>
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+  body { display: grid; place-items: center; }
+  #out { display: block; width: min(100vw, 177.78vh); height: min(56.25vw, 100vh); }
+  #bar { position: fixed; left: 0; right: 0; bottom: 0; height: 3px; background: rgba(255, 255, 255, 0.08); }
+  #bar i { display: block; height: 100%; width: 0; background: #5ce1ff; }
+  body.still #bar { display: none; }
+</style>
+</head>
+<body>
+<canvas id="out" width="1920" height="1080"></canvas>
+<div id="bar"><i></i></div>
+<script src="data.js"></script>
+<script src="post.js"></script>
+<script src="showreel.js"></script>
+<script>
+// Plays live when opened in a browser (space: pause, arrows: step).
+//   ?t=7.5        one still frame at 7.5 s
+//   ?render       frame-by-frame for render.mjs, through window.renderFrame(n)
+//   &fps=60&sub=8 frame rate, and sub-frames averaged per frame for motion blur
+(async () => {
+  const params = new URLSearchParams(location.search);
+  const { W, H, DURATION, drawScene, effects } = window.Showreel;
+  const FPS = Number(params.get('fps') || 60);
+  const SUB = Number(params.get('sub') || 1);
+  const SHUTTER = 0.5;  // 180 degrees
+
+  const sample = 'Aa ąęłńśźż';
+  await Promise.all(['800 100px "Inter Tight"', '500 100px "Inter Tight"', 'italic 400 100px "Instrument Serif"',
+    '500 20px "JetBrains Mono"'].map((f) => document.fonts.load(f, sample)));
+
+  const out = document.getElementById('out');
+  const scene = document.createElement('canvas');
+  scene.width = W;
+  scene.height = H;
+  const ctx = scene.getContext('2d', { alpha: false });
+  const post = new Post(out, W, H);
+
+  function frame(n, sub = SUB) {
+    const t = n / FPS;
+    post.begin();
+    for (let k = 0; k < sub; k++) {
+      const tk = sub === 1 ? t : t + ((k + 0.5) / sub - 0.5) * SHUTTER / FPS;
+      drawScene(ctx, Math.min(DURATION, Math.max(0, tk)));
+      post.add(scene, 1 / sub);
+    }
+    post.finish(effects(t));
+  }
+  window.renderFrame = (n) => { frame(n); return n; };
+  window.showreel = { fps: FPS, sub: SUB, frames: Math.round(DURATION * FPS) };
+
+  if (params.has('render') || params.has('t')) {
+    document.body.classList.add('still');
+    if (params.has('t')) frame(Math.round(Number(params.get('t')) * FPS));
+    window.ready = true;
+    return;
+  }
+
+  const bar = document.querySelector('#bar i');
+  let time = 0, paused = false, last = performance.now();
+  addEventListener('keydown', (e) => {
+    if (e.code === 'Space') paused = !paused;
+    if (e.code === 'ArrowRight') time = Math.min(DURATION, time + (paused ? 1 / FPS : 1));
+    if (e.code === 'ArrowLeft') time = Math.max(0, time - (paused ? 1 / FPS : 1));
+  });
+  (function tick(now) {
+    if (!paused) time = (time + (now - last) / 1000) % DURATION;
+    last = now;
+    frame(Math.floor(time * FPS), 1);
+    bar.style.width = `${(time / DURATION) * 100}%`;
+    requestAnimationFrame(tick);
+  })(last);
+  window.ready = true;
+})();
+</script>
+</body>
+</html>
