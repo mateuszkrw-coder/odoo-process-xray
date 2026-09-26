@@ -48,7 +48,7 @@
     post.begin();
     for (let k = 0; k < sub; k++) {
       const tk = sub === 1 ? t : t + ((k + 0.5) / sub - 0.5) * SHUTTER / FPS;
-      drawScene(ctx, Math.min(DURATION, Math.max(0, tk)));
+      drawScene(ctx, Math.min(DURATION, Math.max(0, tk)), t);
       post.add(scene, 1 / sub);
     }
     post.finish(effects(t));
