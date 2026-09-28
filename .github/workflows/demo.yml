@@ -6,7 +6,7 @@ name: Demo report
 on:
   push:
     branches: [main]
-    paths: ["xray/**", "demo/**", ".github/workflows/demo.yml"]
+    paths: ["xray/**", "demo/**", "docs/showreel.mp4", ".github/workflows/demo.yml"]
   workflow_dispatch:
 
 permissions:
@@ -54,6 +54,11 @@ jobs:
         with:
           name: demo-report
           path: site
+
+      # The README's showreel links here: GitHub's file view only downloads an MP4,
+      # while Pages serves it as video, so it plays in the browser with sound.
+      - name: Add the showreel to the site
+        run: cp docs/showreel.mp4 site/showreel.mp4
 
       - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v5

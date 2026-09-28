@@ -3,15 +3,15 @@
 [![Tests](https://github.com/mateuszkrw-coder/odoo-process-xray/actions/workflows/tests.yml/badge.svg)](https://github.com/mateuszkrw-coder/odoo-process-xray/actions/workflows/tests.yml)
 [![Demo report](https://github.com/mateuszkrw-coder/odoo-process-xray/actions/workflows/demo.yml/badge.svg)](https://github.com/mateuszkrw-coder/odoo-process-xray/actions/workflows/demo.yml)
 
-<a href="docs/showreel.mp4">
+<a href="https://mateuszkrw-coder.github.io/odoo-process-xray/showreel.mp4">
   <picture>
     <source media="(prefers-reduced-motion: reduce)" srcset="docs/showreel.png">
     <img src="docs/showreel.avif" width="100%" alt="15-second showreel: Odoo's chatter history is x-rayed into an event log, the events pour into a process map, the map shows where orders get stuck, who or what is behind it and which Odoo setting fixes it, and it all ends in one HTML report.">
   </picture>
 </a>
 
-<sub>15 seconds, drawn in code from the demo's own event log: every dot is a real event.
-[Watch it with sound](docs/showreel.mp4) · [how it's made](docs/showreel/)</sub>
+<sub>▶ [Watch the showreel in HD with sound](https://mateuszkrw-coder.github.io/odoo-process-xray/showreel.mp4)
+(15 seconds, drawn in code from the demo's own event log: [how it's made](docs/showreel/))</sub>
 
 **Process mining for Odoo.** It reads the change history Odoo already keeps for every sales order,
 delivery and invoice, rebuilds how each order really moved from quotation to payment, and shows

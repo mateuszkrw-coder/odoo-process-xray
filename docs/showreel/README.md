@@ -32,6 +32,9 @@ node docs/showreel/render.mjs      # about 15 minutes on 4 cores
 This writes `docs/showreel.mp4` (1080p60, with sound), `docs/showreel.avif` (the
 looping version in the README: an animated AVIF autoplays like a GIF at a fraction of
 the size) and `docs/showreel.png` (a still for readers who prefer reduced motion).
+The [demo workflow](../../.github/workflows/demo.yml) publishes the MP4 on GitHub Pages,
+which is where the README's "Watch in HD" link points: GitHub's own file view only
+offers an MP4 as a download.
 Headless Chromium draws each frame 8 times across a 180° shutter for motion blur,
 WebGL adds bloom, lens fringing and a vignette, and ffmpeg encodes. `--sub 1` renders a
 quick draft without motion blur.
